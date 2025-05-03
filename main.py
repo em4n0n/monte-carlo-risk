@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import streamlit as st
 
 # --- Monte Carlo Simulation Function ---
-def monte_carlo_simulation(initial_balance, risk_percent, win_rate, reward_to_risk, num_trades, num_simulations, max_daily_loss, commission_per_trade, strategy_type, compounding):
+def monte_carlo_simulation(initial_balance, risk_percent, win_rate, reward_to_risk, num_trades, num_simulations, max_daily_loss):
     ending_balances = []
     max_drawdowns = []
     pnl_curves = []
@@ -20,7 +20,7 @@ def monte_carlo_simulation(initial_balance, risk_percent, win_rate, reward_to_ri
             if i % 10 == 0:
                 daily_loss = 0  # Reset daily loss every 10 trades (approx 1 day)
 
-            risk_amount = balance * (current_risk_percent / 100) if compounding else initial_balance * (current_risk_percent / 100)
+            risk_amount = balance * (current_risk_percent / 100)
             reward_amount = risk_amount * reward_to_risk
 
             if np.random.rand() < win_rate:
@@ -30,8 +30,6 @@ def monte_carlo_simulation(initial_balance, risk_percent, win_rate, reward_to_ri
                 balance -= risk_amount
                 current_risk_percent = max(current_risk_percent / 2, 0.0005)
                 daily_loss += risk_amount
-
-            balance -= commission_per_trade  # Deduct commission
 
             if daily_loss > max_daily_loss:
                 break
@@ -71,15 +69,6 @@ reward_to_risk = st.slider("Reward-to-Risk Ratio", 1.0, 5.0, 2.0, 0.1)
 # Number of simulations
 num_simulations = st.slider("Number of Simulations", 100, 10000, 5000, 100)
 
-# Commission per trade
-commission_per_trade = st.number_input("Commission/Slippage per Trade ($)", min_value=0.0, max_value=50.0, value=2.0, step=0.5)
-
-# Strategy profile
-strategy_type = st.selectbox("Strategy Type", ["Scalping", "Day Trading", "Swing Trading"])
-
-# Compounding mode
-compounding = st.checkbox("Use Compounding Risk", value=True)
-
 # PnL Curve Filter
 pnl_filter = st.radio("Show PnL Curves for:", ("All Runs", "Only Successful", "Only Bust"))
 
@@ -90,8 +79,7 @@ if st.button("Run Simulation"):
 
     # Run simulation
     ending_balances, max_drawdowns, pnl_curves = monte_carlo_simulation(
-        initial_balance, risk_percent, win_rate, reward_to_risk, num_trades, num_simulations, max_daily_loss,
-        commission_per_trade, strategy_type, compounding
+        initial_balance, risk_percent, win_rate, reward_to_risk, num_trades, num_simulations, max_daily_loss
     )
 
     # Convert results to arrays
@@ -116,9 +104,6 @@ if st.button("Run Simulation"):
     st.write(f"Number of trades: {num_trades}")
     st.write(f"Reward-to-Risk Ratio: {reward_to_risk:.2f}")
     st.write(f"Max Daily Loss: ${max_daily_loss:,.2f}")
-    st.write(f"Commission per Trade: ${commission_per_trade:.2f}")
-    st.write(f"Strategy Type: {strategy_type}")
-    st.write(f"Compounding Risk: {'Yes' if compounding else 'No'}")
     st.write(f"Average Ending Balance: ${mean_balance:,.2f}")
     st.write(f"Median Ending Balance: ${median_balance:,.2f}")
     st.write(f"Standard Deviation of Ending Balances: ${std_balance:,.2f}")
