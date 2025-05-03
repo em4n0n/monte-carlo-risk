@@ -77,9 +77,12 @@ if st.button("Run Simulation"):
                         win_rate, trades)
 
     st.subheader("Summary Metrics")
-    st.write(f"Avg Ending Bal: ${np.mean(endings):,.2f}")
-    st.write(f"Success % (>=53k): {np.mean(endings>=53000)*100:.2f}%")
-    st.write(f"Bust % (<0): {np.mean(endings<0)*100:.2f}%")
+    st.write(f"Avg Ending Balance: ${np.mean(endings):,.2f}")
+    st.write(f"Max Ending Balance: ${np.max(endings):,.2f}")
+    st.write(f"Min Ending Balance: ${np.min(endings):,.2f}")
+    st.write(f"Std Dev of Ending Balances: ${np.std(endings):,.2f}")
+    st.write(f"Success % (>= $53k): {np.mean(endings>=53000)*100:.2f}%")
+    st.write(f"Bust % (< $0): {np.mean(endings<0)*100:.2f}%")
     st.write(f"Avg Max Drawdown: {np.mean(max_dds):.2%}")
     st.write(f"Expectancy (R): {expectancy:.2f}")
     st.write(f"Profit Factor: {pfactor:.2f}")
@@ -88,13 +91,13 @@ if st.button("Run Simulation"):
     # Distribution of outcomes
     fig1, ax1 = plt.subplots(figsize=(10,6))
     ax1.hist(endings, bins=50, color='skyblue', edgecolor='black')
-    ax1.axvline(53000, color='green', linestyle='--')
+    ax1.axvline(53000, color='green', linestyle='--', label='Target')
     ax1.set(title='Outcome Distribution', xlabel='Ending Balance', ylabel='Frequency')
+    ax1.legend()
     st.pyplot(fig1)
 
-    # Equity curves and probability cones
+    # Equity curves with probability cones
     curves = np.array([s['curve'] for s in sims])
-    # pad curves to same length
     max_len = max(len(c) for c in curves)
     padded = np.array([np.pad(c, (0,max_len-len(c)), 'edge') for c in curves])
     mean_curve = np.mean(padded, axis=0)
@@ -115,7 +118,7 @@ if st.button("Run Simulation"):
     ax3.set(title='Max Drawdown Distribution', xlabel='Max Drawdown', ylabel='Frequency')
     st.pyplot(fig3)
 
-    # Sample PnL curves
+    # Sample cumulative PnL curves
     fig4, ax4 = plt.subplots(figsize=(10,6))
     for s in sims[:50]:
         ax4.plot(np.cumsum(s['returns']), alpha=0.3)
