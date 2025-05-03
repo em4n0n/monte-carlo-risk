@@ -20,8 +20,10 @@ def monte_carlo_simulation(initial_balance, risk_percent, win_rate, reward_to_ri
 
             if np.random.rand() < win_rate:
                 balance += reward_amount
+                risk_percent = min(risk_percent * 2, 1.0)
             else:
                 balance -= risk_amount
+                risk_percent = max(risk_percent / 2, 0.0005)
 
             peak = max(peak, balance)
             drawdown = (peak - balance) / peak
@@ -41,7 +43,7 @@ def monte_carlo_simulation(initial_balance, risk_percent, win_rate, reward_to_ri
 st.title("Futures Trading Monte Carlo Simulator")
 
 # Risk per trade scale
-risk_percent = st.slider("Risk per Trade (%)", 0.01, 2.0, 0.125, 0.01)
+risk_percent = st.slider("Initial Risk per Trade (%)", 0.01, 2.0, 0.125, 0.01)
 
 # Number of trades
 num_trades = st.slider("Number of Trades", 50, 1000, 200, 10)
@@ -49,24 +51,33 @@ num_trades = st.slider("Number of Trades", 50, 1000, 200, 10)
 # Reward-to-Risk Ratio scale
 reward_to_risk = st.slider("Reward-to-Risk Ratio", 1.0, 5.0, 2.0, 0.1)
 
+# Number of simulations
+num_simulations = st.slider("Number of Simulations", 100, 10000, 5000, 100)
+
+# PnL Curve Filter
+pnl_filter = st.radio("Show PnL Curves for:", ("All Runs", "Only Successful", "Only Bust"))
+
 # Run simulation button
 if st.button("Run Simulation"):
     # Fixed parameters
     initial_balance = 50000
     win_rate = 0.5
-    num_simulations = 5000
 
     # Run simulation
     ending_balances, max_drawdowns, pnl_curves = monte_carlo_simulation(
         initial_balance, risk_percent, win_rate, reward_to_risk, num_trades, num_simulations
     )
 
-    # Results
+    # Convert results to arrays
+    ending_balances = np.array(ending_balances)
+    max_drawdowns = np.array(max_drawdowns)
+
+    # Compute metrics
     mean_balance = np.mean(ending_balances)
     median_balance = np.median(ending_balances)
     std_balance = np.std(ending_balances)
-    prob_success = np.sum(np.array(ending_balances) >= 53000) / num_simulations * 100
-    prob_bust = np.sum(np.array(ending_balances) < 48000) / num_simulations * 100
+    prob_success = np.sum(ending_balances >= 53000) / num_simulations * 100
+    prob_bust = np.sum(ending_balances < 48000) / num_simulations * 100
     mean_drawdown = np.mean(max_drawdowns)
     max_drawdown = np.max(max_drawdowns)
     min_balance = np.min(ending_balances)
@@ -99,11 +110,19 @@ if st.button("Run Simulation"):
     ax1.grid(True)
     st.pyplot(fig1)
 
-    # Plot PnL Curves
+    # Filter PnL curves
+    if pnl_filter == "Only Successful":
+        indices = np.where(ending_balances >= 53000)[0]
+    elif pnl_filter == "Only Bust":
+        indices = np.where(ending_balances < 48000)[0]
+    else:
+        indices = np.arange(len(pnl_curves))
+
+    # Plot filtered PnL Curves
     fig2, ax2 = plt.subplots()
-    for i in range(min(50, len(pnl_curves))):
+    for i in indices[:50]:
         ax2.plot(pnl_curves[i], alpha=0.3)
-    ax2.set_title("Sample PnL Curves from Simulations")
+    ax2.set_title(f"Sample PnL Curves - {pnl_filter}")
     ax2.set_xlabel("Trade Number")
     ax2.set_ylabel("Balance")
     ax2.grid(True)
