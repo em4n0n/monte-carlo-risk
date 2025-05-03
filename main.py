@@ -15,7 +15,14 @@ def calculate_profit_factor(ending_balances, risk_amount, reward_amount, win_rat
     return total_gain / abs(total_loss) if total_loss != 0 else np.nan
 
 def calculate_sharpe(returns):
-    return np.mean(returns) / (np.std(returns) + 1e-9) * np.sqrt(len(returns))
+    # Sharpe on trade-by-trade returns per simulation
+    if len(returns) < 2:
+        return np.nan
+    mean_ret = np.mean(returns)
+    std_ret = np.std(returns, ddof=1)
+    # annualize factor: assume 250 trading days * average trades/day
+    # here just annualize by sqrt(N)
+    return (mean_ret / (std_ret + 1e-9)) * np.sqrt(len(returns))
 
 # --- Monte Carlo Simulation Function ---
 def monte_carlo_simulation(initial_balance, risk_percent, win_rate, reward_to_risk,
@@ -33,11 +40,9 @@ def monte_carlo_simulation(initial_balance, risk_percent, win_rate, reward_to_ri
                 daily_loss = 0
             risk_amt = balance * (risk_percent / 100)
             reward_amt = risk_amt * reward_to_risk
-            if np.random.rand() < win_rate:
-                pnl = reward_amt
-            else:
-                pnl = -risk_amt
-                daily_loss += risk_amt
+            pnl = reward_amt if np.random.rand() < win_rate else -risk_amt
+            if pnl < 0:
+                daily_loss += abs(pnl)
             balance += pnl - commission
             returns.append(pnl)
             curve.append(balance)
@@ -45,9 +50,12 @@ def monte_carlo_simulation(initial_balance, risk_percent, win_rate, reward_to_ri
             drawdowns.append((peak - balance) / peak)
             if daily_loss > max_daily_loss or balance < 0:
                 break
-        sims.append({'curve': np.array(curve), 'ending': balance,
-                     'max_dd': np.max(drawdowns) if drawdowns else 0,
-                     'returns': np.array(returns)})
+        sims.append({
+            'curve': np.array(curve),
+            'ending': balance,
+            'max_dd': np.max(drawdowns) if drawdowns else 0,
+            'returns': np.array(returns)
+        })
     return sims
 
 # --- Streamlit UI ---
@@ -67,13 +75,14 @@ if st.button("Run Simulation"):
                                   trades, sims_count, max_daily_loss, commission)
     endings = np.array([s['ending'] for s in sims])
     max_dds  = np.array([s['max_dd'] for s in sims])
-    all_returns = np.hstack([s['returns'] for s in sims])
+    # compute Sharpe per simulation then average
+    sharpe_vals = np.array([calculate_sharpe(s['returns']) for s in sims])
 
     # Risk metrics
     expectancy   = calculate_expectancy(win_rate, rr)
-    sharpe       = calculate_sharpe(all_returns)
     pfactor      = calculate_profit_factor(endings,
-                        init_bal*(risk_percent/100), init_bal*(risk_percent/100)*rr,
+                        init_bal * (risk_percent/100),
+                        init_bal * (risk_percent/100) * rr,
                         win_rate, trades)
 
     st.subheader("Summary Metrics")
@@ -86,7 +95,7 @@ if st.button("Run Simulation"):
     st.write(f"Avg Max Drawdown: {np.mean(max_dds):.2%}")
     st.write(f"Expectancy (R): {expectancy:.2f}")
     st.write(f"Profit Factor: {pfactor:.2f}")
-    st.write(f"Sharpe Ratio: {sharpe:.2f}")
+    st.write(f"Avg Sharpe Ratio: {np.nanmean(sharpe_vals):.2f}")
 
     # Distribution of outcomes
     fig1, ax1 = plt.subplots(figsize=(10,6))
