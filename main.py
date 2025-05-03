@@ -6,11 +6,13 @@ import streamlit as st
 def monte_carlo_simulation(initial_balance, risk_percent, win_rate, reward_to_risk, num_trades, num_simulations):
     ending_balances = []
     max_drawdowns = []
+    pnl_curves = []
 
     for _ in range(num_simulations):
         balance = initial_balance
         peak = balance
         drawdowns = []
+        pnl_curve = [balance]
 
         for _ in range(num_trades):
             risk_amount = balance * (risk_percent / 100)
@@ -24,14 +26,16 @@ def monte_carlo_simulation(initial_balance, risk_percent, win_rate, reward_to_ri
             peak = max(peak, balance)
             drawdown = (peak - balance) / peak
             drawdowns.append(drawdown)
+            pnl_curve.append(balance)
 
             if balance < 48000:
                 break
 
         ending_balances.append(balance)
         max_drawdowns.append(max(drawdowns))
+        pnl_curves.append(pnl_curve)
 
-    return ending_balances, max_drawdowns
+    return ending_balances, max_drawdowns, pnl_curves
 
 # --- Streamlit UI ---
 st.title("Futures Trading Monte Carlo Simulator")
@@ -53,7 +57,7 @@ if st.button("Run Simulation"):
     num_simulations = 5000
 
     # Run simulation
-    ending_balances, max_drawdowns = monte_carlo_simulation(
+    ending_balances, max_drawdowns, pnl_curves = monte_carlo_simulation(
         initial_balance, risk_percent, win_rate, reward_to_risk, num_trades, num_simulations
     )
 
@@ -83,15 +87,24 @@ if st.button("Run Simulation"):
     st.write(f"Average Max Drawdown: {mean_drawdown:.2%}")
     st.write(f"Max Observed Drawdown: {max_drawdown:.2%}")
 
-    # Plot results
-    fig, ax = plt.subplots()
-    ax.hist(ending_balances, bins=50, color='skyblue', edgecolor='black')
-    ax.axvline(53000, color='green', linestyle='dashed', label='Target ($53k)')
-    ax.axvline(48000, color='red', linestyle='dashed', label='Bust ($48k)')
-    ax.set_title(f"Monte Carlo Simulation ({risk_percent}% Risk)")
-    ax.set_xlabel("Ending Balance")
-    ax.set_ylabel("Frequency")
-    ax.legend()
-    ax.grid(True)
+    # Plot ending balance distribution
+    fig1, ax1 = plt.subplots()
+    ax1.hist(ending_balances, bins=50, color='skyblue', edgecolor='black')
+    ax1.axvline(53000, color='green', linestyle='dashed', label='Target ($53k)')
+    ax1.axvline(48000, color='red', linestyle='dashed', label='Bust ($48k)')
+    ax1.set_title(f"Monte Carlo Simulation ({risk_percent}% Risk)")
+    ax1.set_xlabel("Ending Balance")
+    ax1.set_ylabel("Frequency")
+    ax1.legend()
+    ax1.grid(True)
+    st.pyplot(fig1)
 
-    st.pyplot(fig)
+    # Plot PnL Curves
+    fig2, ax2 = plt.subplots()
+    for i in range(min(50, len(pnl_curves))):
+        ax2.plot(pnl_curves[i], alpha=0.3)
+    ax2.set_title("Sample PnL Curves from Simulations")
+    ax2.set_xlabel("Trade Number")
+    ax2.set_ylabel("Balance")
+    ax2.grid(True)
+    st.pyplot(fig2)
