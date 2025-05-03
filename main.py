@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import streamlit as st
 
 # --- Monte Carlo Simulation Function ---
-def monte_carlo_simulation(initial_balance, risk_percent, win_rate, reward_to_risk, num_trades, num_simulations):
+def monte_carlo_simulation(initial_balance, risk_percent, win_rate, reward_to_risk, num_trades, num_simulations, max_daily_loss):
     ending_balances = []
     max_drawdowns = []
     pnl_curves = []
@@ -13,17 +13,25 @@ def monte_carlo_simulation(initial_balance, risk_percent, win_rate, reward_to_ri
         peak = balance
         drawdowns = []
         pnl_curve = [balance]
+        daily_loss = 0
 
-        for _ in range(num_trades):
+        for i in range(num_trades):
+            if i % 10 == 0:
+                daily_loss = 0  # Reset daily loss every 10 trades (approx 1 day)
+
             risk_amount = balance * (risk_percent / 100)
             reward_amount = risk_amount * reward_to_risk
 
             if np.random.rand() < win_rate:
                 balance += reward_amount
-                risk_percent = min(risk_percent * 2, 1.0)
+                risk_percent = min(risk_percent * 2, 10.0)
             else:
                 balance -= risk_amount
                 risk_percent = max(risk_percent / 2, 0.0005)
+                daily_loss += risk_amount
+
+            if daily_loss > max_daily_loss:
+                break
 
             peak = max(peak, balance)
             drawdown = (peak - balance) / peak
@@ -43,7 +51,13 @@ def monte_carlo_simulation(initial_balance, risk_percent, win_rate, reward_to_ri
 st.title("Futures Trading Monte Carlo Simulator")
 
 # Risk per trade scale
-risk_percent = st.slider("Initial Risk per Trade (%)", 0.01, 2.0, 0.125, 0.01)
+risk_percent = st.slider("Initial Risk per Trade (%)", 0.0005, 10.0, 0.125, 0.0005)
+
+# Win rate
+win_rate = st.slider("Win Rate (%)", 1, 99, 50, 1) / 100
+
+# Max daily loss
+max_daily_loss = st.number_input("Max Daily Loss ($)", min_value=100.0, max_value=5000.0, value=1000.0, step=50.0)
 
 # Number of trades
 num_trades = st.slider("Number of Trades", 50, 1000, 200, 10)
@@ -61,11 +75,10 @@ pnl_filter = st.radio("Show PnL Curves for:", ("All Runs", "Only Successful", "O
 if st.button("Run Simulation"):
     # Fixed parameters
     initial_balance = 50000
-    win_rate = 0.5
 
     # Run simulation
     ending_balances, max_drawdowns, pnl_curves = monte_carlo_simulation(
-        initial_balance, risk_percent, win_rate, reward_to_risk, num_trades, num_simulations
+        initial_balance, risk_percent, win_rate, reward_to_risk, num_trades, num_simulations, max_daily_loss
     )
 
     # Convert results to arrays
@@ -86,8 +99,10 @@ if st.button("Run Simulation"):
     # Displaying results
     st.subheader("Simulation Summary")
     st.write(f"Risk per trade: {risk_percent:.3f}%")
+    st.write(f"Win rate: {win_rate * 100:.1f}%")
     st.write(f"Number of trades: {num_trades}")
     st.write(f"Reward-to-Risk Ratio: {reward_to_risk:.2f}")
+    st.write(f"Max Daily Loss: ${max_daily_loss:,.2f}")
     st.write(f"Average Ending Balance: ${mean_balance:,.2f}")
     st.write(f"Median Ending Balance: ${median_balance:,.2f}")
     st.write(f"Standard Deviation of Ending Balances: ${std_balance:,.2f}")
