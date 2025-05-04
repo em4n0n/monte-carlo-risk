@@ -76,7 +76,7 @@ def main():
         "Max Daily Loss ($)",
         min_value=0.0,
         max_value=starting_capital,
-        value=0.0,
+        value=1000.0,
         step=100.0
     )
     bust_threshold = st.sidebar.number_input(
