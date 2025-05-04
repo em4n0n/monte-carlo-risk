@@ -60,34 +60,34 @@ def main():
     st.title("Professional Futures Monte Carlo Simulator")
 
     # Sidebar Inputs
-    starting_capital = st.sidebar.number_input(
+    starting_capital = st.number_input(
         "Starting Capital ($)",
         min_value=1000.0,
         max_value=1_000_000.0,
         value=50_000.0,
         step=1_000.0
     )
-    risk_percent   = st.sidebar.slider("Risk per Trade (%)", 0.01, 10.0, 0.125, 0.01)
-    win_rate       = st.sidebar.slider("Win Rate (%)", 1, 99, 50, 1) / 100
-    rr             = st.sidebar.slider("Reward-to-Risk Ratio", 1.0, 5.0, 2.0, 0.1)
-    trades         = st.sidebar.slider("Trades per Simulation", 50, 1000, 200, 10)
-    sims_count     = st.sidebar.slider("Simulations", 100, 10000, 5000, 100)
-    max_daily_loss = st.sidebar.number_input(
+    risk_percent   = st.slider("Risk per Trade (%)", 0.01, 10.0, 0.125, 0.01)
+    win_rate       = st.slider("Win Rate (%)", 1, 99, 50, 1) / 100
+    rr             = st.slider("Reward-to-Risk Ratio", 1.0, 5.0, 2.0, 0.1)
+    trades         = st.slider("Trades per Simulation", 50, 1000, 200, 10)
+    sims_count     = st.slider("Simulations", 100, 10000, 5000, 100)
+    max_daily_loss = st.number_input(
         "Max Daily Loss ($)",
         min_value=0.0,
         max_value=starting_capital,
         value=1000.0,
         step=100.0
     )
-    bust_threshold = st.sidebar.number_input(
+    bust_threshold = st.number_input(
         "Bust Threshold ($)",
         min_value=0.0,
         max_value=starting_capital,
         value=0.0,
         step=100.0
     )
-    commission     = st.sidebar.number_input("Commission per Trade ($)", 0.0, 50.0, 2.0, 0.5)
-    target_balance = st.sidebar.number_input(
+    commission     = st.number_input("Commission per Trade ($)", 0.0, 50.0, 2.0, 0.5)
+    target_balance = st.number_input(
         "Success Target ($)",
         min_value=starting_capital,
         max_value=starting_capital * 2,
@@ -95,7 +95,7 @@ def main():
         step=100.0
     )
 
-    if st.sidebar.button("Run Simulation"):
+    if st.button("Run Simulation"):
         sims = monte_carlo_simulation(
             starting_capital, risk_percent, win_rate, rr,
             trades, sims_count, max_daily_loss, commission
